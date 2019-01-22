@@ -25,7 +25,7 @@
         </HBox>
         <HBox>
             <TextField fx:id="username" editable="false" text="Unauthorized" disable="false" HBox.hgrow="ALWAYS"/>
-            <Button text="Login" onAction="#btnShowModal" prefWidth="150"/>
+            <Button text="Login" onAction="#connect" prefWidth="150"/>
         </HBox>
         <TextArea editable="false" VBox.vgrow="ALWAYS" />
 

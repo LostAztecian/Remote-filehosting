@@ -13,9 +13,13 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import ru.stoliarenkoas.gb.filehosting.common.Message;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.Socket;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.ResourceBundle;
 
 public class Controller implements Initializable {
@@ -82,5 +86,19 @@ public class Controller implements Initializable {
 
     public void btnExit(ActionEvent actionEvent) {
         System.exit(0);
+    }
+
+    public void connect() {
+        System.out.println("Connecting...");
+        try (Socket socket = new Socket("localhost", 7637)) {
+            byte[] bytes = new byte[240];
+            Arrays.fill(bytes, (byte)3);
+            Message message = new Message((byte)0, bytes);
+            socket.getOutputStream().write(message.getBytes());
+            socket.getOutputStream().flush();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 }
