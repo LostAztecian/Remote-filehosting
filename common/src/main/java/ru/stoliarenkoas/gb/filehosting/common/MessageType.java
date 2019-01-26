@@ -1,0 +1,18 @@
+package ru.stoliarenkoas.gb.filehosting.common;
+
+public enum MessageType {
+    HANDSHAKE,
+    HANDSHAKE_RESPONSE,
+    LOGIN,
+    LOGIN_RESPONSE,
+    LOGOUT,
+    LOGOUT_RESPONSE,
+    REGISTER,
+    REGISTER_RESPONSE,
+    GET_FILE_LIST,
+    GET_FILE_LIST_RESPONSE,
+    FILE_UPLOAD,
+    FILE_UPLOAD_RESPONSE,
+    FILE_DOWNLOAD,
+    FILE_DOWNLOAD_RESPONSE
+}
