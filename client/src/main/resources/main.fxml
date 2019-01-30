@@ -41,7 +41,7 @@
             <Button GridPane.columnIndex="3" text="Download File" prefWidth="100" onAction="#btnDownloadFile"/>
             <Button GridPane.columnIndex="4" text="Something else" prefWidth="100" onAction="#btnSomethingElse"/>
         </GridPane>
-        <TextArea editable="false" VBox.vgrow="ALWAYS" />
+        <TextArea fx:id="textarea" editable="false" VBox.vgrow="ALWAYS" />
 
         <!-- Footer -->
         <HBox>

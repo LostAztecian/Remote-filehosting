@@ -10,6 +10,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
@@ -22,11 +23,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.ResourceBundle;
+import java.util.Set;
+import java.util.TreeSet;
 
 public class Controller implements Initializable {
     private final MessageType[] messageTypes = MessageType.values();
@@ -35,6 +37,9 @@ public class Controller implements Initializable {
     final Path clientFolder = Paths.get("client_folder");
     final Path downloadsFolder = clientFolder.resolve("downloads");
     final Path clientFile = Paths.get("Clients-file.txt"); //Stub
+
+    final Set<String> dirs = new TreeSet<>();
+    final Set<String> files = new TreeSet<>();
 
     Path requestedFile;
 
@@ -46,6 +51,8 @@ public class Controller implements Initializable {
     Label labelDragWindow;
     @FXML
     VBox mainVBox;
+    @FXML
+    TextArea textarea;
 
     @FXML
     private void login() {
@@ -327,24 +334,28 @@ public class Controller implements Initializable {
         System.out.println("Download request sent: " + Arrays.toString(msg));
     }
 
-    public void btnSomethingElse(ActionEvent actionEvent) {
+    public void btnSomethingElse(ActionEvent actionEvent) throws Exception{
         System.out.println("Button 'SomethingElse' is pressed");
-        Path filepath = clientFolder.resolve(clientFile);
-        if (Files.exists(filepath)) {
-            try {
-                Files.delete(filepath);
-                System.out.println("File deleted!");
-                return;
-            } catch (IOException e) {
-                System.out.println("Cant delete file!");
+        textarea.clear();
+        dirs.clear();
+        files.clear();
+
+        Files.walkFileTree(clientFolder, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                if (dir.equals(clientFolder)) return FileVisitResult.CONTINUE;
+                dirs.add(String.format("%s\\%n", dir.getFileName()));
+                return FileVisitResult.SKIP_SUBTREE;
             }
-        }
-        try {
-            Files.createDirectories(filepath.getParent());
-            Files.write(filepath, "Hello NIO! Туц, Туц, Туц ))".getBytes());
-            System.out.printf("File created at %s!%n", filepath.toString());
-        } catch (IOException e) {
-            System.out.println("Can not create file.");
-        }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                files.add(String.format("%s%n", file.getFileName()));
+                return FileVisitResult.CONTINUE;
+            }
+        });
+
+        dirs.forEach(textarea::appendText);
+        files.forEach(textarea::appendText);
     }
 }

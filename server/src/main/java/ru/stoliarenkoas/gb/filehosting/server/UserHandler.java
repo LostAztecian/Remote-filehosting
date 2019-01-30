@@ -105,13 +105,14 @@ public class UserHandler {
 
         //Write file meta-data
         remainingFileSize = Files.size(currentFile);
-        ByteBuf byteBuf = allocator.buffer(1 + 8);
+        ByteBuf byteBuf = allocator.buffer(256);
         byteBuf.writeByte((byte)MessageType.FILE_DOWNLOAD_RESPONSE.ordinal());
         for (int i = 7; i >= 0; i--) {
             byteBuf.writeByte((byte)(remainingFileSize >>> 8 * i));
         }
+        byteBuf.retain();
         ctx.writeAndFlush(byteBuf);
-
+        byteBuf.clear();
         //Split file and send chunks
         is = Files.newInputStream(currentFile);
         final long fullChunksCount = remainingFileSize / 256;
@@ -120,9 +121,10 @@ public class UserHandler {
             for (int i = 0; i < fullChunksCount; i++) {
                 is.read(buf);
                 System.out.println("Sending filechunk: " + Arrays.toString(buf));
-                byteBuf = allocator.buffer(256);
                 byteBuf.writeBytes(buf);
+                byteBuf.retain();
                 ctx.writeAndFlush(byteBuf);
+                byteBuf.clear();
             }
         }
         remainingFileSize -= fullChunksCount * 256;
@@ -130,10 +132,10 @@ public class UserHandler {
         //Write remainder
         if (remainingFileSize > 0) {
             System.out.println("Sending reminder of " + remainingFileSize + "bytes.");
-            byteBuf = allocator.buffer((int)remainingFileSize);
             while (remainingFileSize-- > 0) {
                 byteBuf.writeByte(is.read());
             }
+            byteBuf.retain();
             ctx.writeAndFlush(byteBuf);
             System.out.println("File sent.");
         }
