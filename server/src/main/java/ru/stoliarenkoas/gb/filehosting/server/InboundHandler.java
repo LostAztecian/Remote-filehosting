@@ -43,6 +43,9 @@ public class InboundHandler extends ChannelInboundHandlerAdapter {
             case GET_FILE_LIST: {
                 break;
             }
+            case LOCATION_CHANGE: {
+                break;
+            }
             case FILE_UPLOAD: {
                 System.out.println("File upload message received.");
                 stageFinished = handler.uploadFile(ctx, byteBuf);
@@ -50,7 +53,14 @@ public class InboundHandler extends ChannelInboundHandlerAdapter {
             }
             case FILE_DOWNLOAD: {
                 System.out.println("File download message received.");
+                System.out.println(ctx.name());
                 stageFinished = handler.downloadFile(ctx, byteBuf);
+                break;
+            }
+            case FILE_DELETE: {
+                break;
+            }
+            case FILE_RENAME: {
                 break;
             }
         }
@@ -62,4 +72,9 @@ public class InboundHandler extends ChannelInboundHandlerAdapter {
 
     }
 
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        System.out.println("Exception caught: ");
+        cause.printStackTrace();
+    }
 }

@@ -25,6 +25,7 @@ public class UserHandler {
     private long remainingFileSize = 0;
 
     public boolean login(ChannelHandlerContext ctx, ByteBuf msg) {
+        System.out.println("Login in userHandler!");
         //get login
         final byte[] loginBytes = new byte[msg.readByte()];
         for (int i = 0; i < loginBytes.length; i++) loginBytes[i] = msg.readByte();
@@ -49,10 +50,7 @@ public class UserHandler {
     public boolean uploadFile(ChannelHandlerContext ctx, ByteBuf msg) throws Exception {
         //If this is a first chunk - set flags and open file-writing stream.
         if (os == null) {
-            //get size
             System.out.println("Creating a new upload session...");
-            remainingFileSize = msg.readLong();
-            System.out.println("Incoming file size: " + remainingFileSize);
             //get name
             final byte[] filenameBytes = new byte[msg.readByte()];
             for (int i = 0; i < filenameBytes.length; i++) {
@@ -60,16 +58,22 @@ public class UserHandler {
             }
             currentFile = SERVER_ROOT_FOLDER.resolve(Paths.get(username).resolve(Paths.get(new String(filenameBytes))));
             System.out.println("Incoming file name: " + currentFile);
+            //get size
+            remainingFileSize = msg.readLong();
+            System.out.println("Incoming file size: " + remainingFileSize);
             //Create dirs, clear old files and open stream.
             Files.createDirectories(currentFile.getParent());
             if (Files.exists(currentFile)) Files.delete(currentFile);
             os = Files.newOutputStream(currentFile);
         }
         //Write remaining data
+        System.out.printf("Readable bytes before read %d%n", msg.readableBytes());
         final int toWrite = remainingFileSize > msg.readableBytes() ? msg.readableBytes() : (int)remainingFileSize;
-        for (int i = 0; i < toWrite; i++) {
-            os.write(msg.readByte());
-        }
+        final byte[] buf = new byte[toWrite];
+        msg.readBytes(buf);
+        System.out.println(new String(buf));
+        assert msg.readableBytes() == 0;
+        os.write(buf);
         msg.release();
 
         //Check completion and return.

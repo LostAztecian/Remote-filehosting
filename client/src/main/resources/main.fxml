@@ -30,7 +30,7 @@
         <!-- Client -->
         <HBox>
             <TextField fx:id="username" editable="false" text="Unauthorized" disable="false" HBox.hgrow="ALWAYS"/>
-            <Button text="Login" onAction="#connect" prefWidth="150"/>
+            <Button text="Login" prefWidth="150"/>
         </HBox>
         <!-- Buttons for tests -->
         <GridPane style="-fx-background-color: #ffffff" hgap="10" vgap="10">
