@@ -1,15 +1,25 @@
 package ru.stoliarenkoas.gb.filehosting.server;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import ru.stoliarenkoas.gb.filehosting.common.MessageType;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class InboundHandler extends ChannelInboundHandlerAdapter {
     private static final MessageType[] MESSAGE_TYPES = MessageType.values();
-    private UserHandler handler = new UserHandler();
+    private Map<Channel, UserHandler> handlers = new HashMap<>();
     private MessageType stage = null;
     private boolean stageFinished = false;
+
+    @Override
+    public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
+        super.channelRegistered(ctx);
+        handlers.put(ctx.channel(), new UserHandler());
+    }
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -25,16 +35,17 @@ public class InboundHandler extends ChannelInboundHandlerAdapter {
 
         switch (stage) {
             case HANDSHAKE: {
+                stageFinished = handlers.get(ctx.channel()).handshake(ctx, byteBuf);
                 break;
             }
             case LOGIN: {
                 System.out.println("User login message received.");
-                stageFinished = handler.login(ctx, byteBuf);
+                stageFinished = handlers.get(ctx.channel()).login(ctx, byteBuf);
                 break;
             }
             case LOGOUT: {
                 System.out.println("User logout message received.");
-                stageFinished = handler.logout(ctx, byteBuf);
+                stageFinished = handlers.get(ctx.channel()).logout(ctx, byteBuf);
                 break;
             }
             case REGISTER: {
@@ -48,13 +59,13 @@ public class InboundHandler extends ChannelInboundHandlerAdapter {
             }
             case FILE_UPLOAD: {
                 System.out.println("File upload message received.");
-                stageFinished = handler.uploadFile(ctx, byteBuf);
+                stageFinished = handlers.get(ctx.channel()).uploadFile(ctx, byteBuf);
                 break;
             }
             case FILE_DOWNLOAD: {
                 System.out.println("File download message received.");
                 System.out.println(ctx.name());
-                stageFinished = handler.downloadFile(ctx, byteBuf);
+                stageFinished = handlers.get(ctx.channel()).downloadFile(ctx, byteBuf);
                 break;
             }
             case FILE_DELETE: {

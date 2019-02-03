@@ -97,9 +97,7 @@ public final class MessageSender {
             return;
         }
         byteBuf.clear();
-        /**
-         * Эта часть доставляется без проблем
-         */
+
         //Send message type, file name and length
         byteBuf.writeByte((byte)MessageType.FILE_UPLOAD.ordinal());
         byteBuf.writeByte((byte)filePath.getFileName().toString().getBytes().length);
@@ -108,10 +106,7 @@ public final class MessageSender {
         byteBuf.writeLong(size);
         byteBuf.retain();
         connection.getCurrentChannel().writeAndFlush(byteBuf);
-        /**
-         * Эта часть теряет некоторые сообщения, а некоторые отправляются по 10-20 раз.
-         * при этом проверка содержимого буффера говорит что всё в порядке.
-         */
+
         //Send file chunks
         byte[] buf = new byte[BUFFER_SIZE];
         final long chunksCount = size / BUFFER_SIZE;
