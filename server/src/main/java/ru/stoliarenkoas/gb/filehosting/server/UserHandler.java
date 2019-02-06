@@ -11,6 +11,8 @@ import java.io.OutputStream;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 
 public class UserHandler {
     private static final int BUFFER_SIZE = 256;
@@ -20,6 +22,8 @@ public class UserHandler {
 
     private InputStream is = null;
     private OutputStream os = null;
+
+    private final List<String> fileList = new LinkedList<>();
 
     private Path currentFolder = Paths.get("");
     private Path currentFile = null;
@@ -32,9 +36,12 @@ public class UserHandler {
         msg.release();
         final String message = new String(msgBytes);
         System.out.println("User greets you: " + message);
+        final String responce = "Greetings from server";
         buffer.clear();
         buffer.retain();
-        buffer.writeBytes("Greetings from server".getBytes());
+        buffer.writeByte((byte)MessageType.HANDSHAKE_RESPONSE.ordinal());
+        buffer.writeByte(responce.getBytes().length);
+        buffer.writeBytes(responce.getBytes());
         ctx.writeAndFlush(buffer);
         return true;
 
@@ -53,7 +60,6 @@ public class UserHandler {
 
         //put authorization here
 
-        msg.release();
         System.out.printf("User logged in:%n-login: %s%n-password: %s%n", login, password);
         username = login;
 
@@ -64,7 +70,7 @@ public class UserHandler {
         buffer.writeByte(loginBytes.length);
         buffer.writeBytes(loginBytes);
         ctx.writeAndFlush(buffer);
-        return true;
+        return sendFileList(ctx, msg);
 
     }
 
@@ -94,43 +100,43 @@ public class UserHandler {
 
     }
 
+    /**
+     * Send type(1b) + list length(1b) + data[length(1b) + payload]
+     */
     public boolean sendFileList(ChannelHandlerContext ctx, ByteBuf msg) {
 
         msg.release();
         if (username == null) return true;
-        buffer.clear();
-        buffer.retain();
-        buffer.writeByte((byte)MessageType.GET_FILE_LIST_RESPONSE.ordinal());
-        ctx.write(buffer);
+        fileList.clear();
         try {
             Files.walkFileTree(SERVER_ROOT_FOLDER.resolve(username).resolve(currentFolder), new SimpleFileVisitor<Path>(){
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                    if (dir.equals(currentFolder)) return FileVisitResult.CONTINUE;
-                    final byte[] bytes = dir.getFileName().toString().getBytes();
-                    buffer.clear();
-                    buffer.retain();
-                    buffer.writeBoolean(false);
-                    buffer.writeByte(bytes.length);
-                    buffer.writeBytes(bytes);
-                    ctx.writeAndFlush(buffer);
+                    if (dir.equals(currentFolder) || dir.equals(SERVER_ROOT_FOLDER.resolve(username))) return FileVisitResult.CONTINUE;
+                    fileList.add(0, dir.getFileName().toString());
                     return FileVisitResult.SKIP_SUBTREE;
                 }
 
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    final byte[] bytes = file.getFileName().toString().getBytes();
-                    buffer.clear();
-                    buffer.retain();
-                    buffer.writeBoolean(true);
-                    buffer.writeByte(bytes.length);
-                    buffer.writeBytes(bytes);
-                    ctx.writeAndFlush(buffer);
+                    fileList.add(file.getFileName().toString());
                     return FileVisitResult.CONTINUE;
                 }
             });
         } catch (IOException e) {
             e.printStackTrace();
+        }
+
+        buffer.clear();
+        buffer.writeByte((byte)MessageType.GET_FILE_LIST_RESPONSE.ordinal());
+        buffer.writeByte((byte)fileList.size());
+        for (String name : fileList) {
+            final byte[] bytes = name.getBytes();
+            buffer.retain();
+            buffer.writeByte(bytes.length);
+            buffer.writeBytes(bytes);
+            ctx.writeAndFlush(buffer);
+            buffer.clear();
         }
         return true;
 
@@ -148,16 +154,24 @@ public class UserHandler {
             targetFolder = currentFolder.getParent();
         } else targetFolder = currentFolder.resolve(folder);
 
+        //prepare response
+        buffer.clear();
+        buffer.retain();
+        buffer.writeByte((byte)MessageType.LOCATION_CHANGE_RESPONSE.ordinal());
+
         //if unable to change location
         if (targetFolder == null || Files.notExists(targetFolder) || !Files.isDirectory(targetFolder)) {
-            buffer.clear();
-            buffer.retain();
-            buffer.writeByte((byte)MessageType.LOCATION_CHANGE_RESPONSE.ordinal());
             buffer.writeBoolean(false);
             ctx.writeAndFlush(buffer);
             msg.release();
             return true;
         }
+        //if location changed
+        currentFolder = targetFolder;
+        buffer.writeBoolean(true);
+        buffer.writeByte(currentFolder.toString().getBytes().length);
+        buffer.writeBytes(currentFolder.toString().getBytes());
+        ctx.writeAndFlush(buffer);
 
         return sendFileList(ctx, msg);
 
@@ -181,7 +195,7 @@ public class UserHandler {
             //Create dirs, clear old files and open stream.
             Files.createDirectories(currentFile.getParent());
             if (Files.exists(currentFile)) Files.delete(currentFile);
-            os = Files.newOutputStream(currentFile);
+            os = Files.newOutputStream(currentFile, StandardOpenOption.CREATE_NEW);
         }
         //Write remaining data
         System.out.printf("Readable bytes before read %d%n", msg.readableBytes());
@@ -223,7 +237,6 @@ public class UserHandler {
         //Ensure file existence.
         currentFile = SERVER_ROOT_FOLDER.resolve(Paths.get(username)).resolve(currentFolder).resolve(Paths.get(new String(filenameBytes)));
         if (Files.notExists(currentFile)) {
-            System.out.println("No such file on server");
             return true;
         }
 
@@ -243,7 +256,6 @@ public class UserHandler {
             byte[] buf = new byte[BUFFER_SIZE];
             for (int i = 0; i < fullChunksCount; i++) {
                 is.read(buf);
-                System.out.println("Sending filechunk: " + Arrays.toString(buf));
                 buffer.writeBytes(buf);
                 buffer.retain();
                 ctx.writeAndFlush(buffer);
@@ -254,12 +266,11 @@ public class UserHandler {
 
         //Write remainder
         if (remainingFileSize > 0) {
-            System.out.println("Sending reminder of " + remainingFileSize + "bytes.");
             final byte[] buf = new byte[(int)remainingFileSize];
+            is.read(buf);
             buffer.writeBytes(buf);
             buffer.retain();
             ctx.writeAndFlush(buffer);
-            System.out.println("File sent.");
         }
 
         //Close file ans reset flags.

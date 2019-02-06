@@ -21,6 +21,7 @@ public class Connection {
     private static final InetSocketAddress SERVER_ADDRESS = new InetSocketAddress("127.0.0.1", 7637);
     @Getter private Channel currentChannel;
     @Getter private final MessageSender messageSender;
+    @Getter private Controller controller;
 
     public void start() {
         EventLoopGroup mainGroup = new NioEventLoopGroup();
@@ -48,6 +49,10 @@ public class Connection {
     public void close() {
         currentChannel.close();
         currentChannel = null;
+    }
+
+    public void registerController(Controller controller) {
+        this.controller = controller;
     }
 
 }

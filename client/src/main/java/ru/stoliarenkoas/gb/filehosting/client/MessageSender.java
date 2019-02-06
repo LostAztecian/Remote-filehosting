@@ -1,6 +1,7 @@
 package ru.stoliarenkoas.gb.filehosting.client;
 
 import com.sun.istack.internal.NotNull;
+import io.netty.channel.ChannelFuture;
 import lombok.RequiredArgsConstructor;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -10,7 +11,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 @RequiredArgsConstructor
 public final class MessageSender {
@@ -89,45 +89,46 @@ public final class MessageSender {
         connection.getCurrentChannel().writeAndFlush(byteBuf);
     }
 
-    public void sendFileUploadRequest(final @NotNull String pathToFile) throws IOException {
+    public void sendFileUploadRequest(final @NotNull Path pathToFile) throws IOException {
+
         //Check if file is uploadable
-        final Path filePath = Paths.get(pathToFile);
-        if (!Files.isRegularFile(filePath)) {
-            System.out.println("Inappropriate path to file");
-            return;
-        }
-        byteBuf.clear();
+        try (InputStream is = Files.newInputStream(pathToFile)){
+            if (!Files.isRegularFile(pathToFile)) {
+                System.out.println("Inappropriate path to file");
+                return;
+            }
+            byteBuf.clear();
+            byteBuf.retain();
 
-        //Send message type, file name and length
-        byteBuf.writeByte((byte)MessageType.FILE_UPLOAD.ordinal());
-        byteBuf.writeByte((byte)filePath.getFileName().toString().getBytes().length);
-        byteBuf.writeBytes(filePath.getFileName().toString().getBytes());
-        final long size = Files.size(filePath);
-        byteBuf.writeLong(size);
-        byteBuf.retain();
-        connection.getCurrentChannel().writeAndFlush(byteBuf);
+            //Send message type, file name and length
+            byteBuf.writeByte((byte)MessageType.FILE_UPLOAD.ordinal());
+            byteBuf.writeByte((byte)pathToFile.getFileName().toString().getBytes().length);
+            byteBuf.writeBytes(pathToFile.getFileName().toString().getBytes());
+            final long size = Files.size(pathToFile);
+            byteBuf.writeLong(size);
+            ChannelFuture future = connection.getCurrentChannel().writeAndFlush(byteBuf);
+            syncFuture(future);
 
-        //Send file chunks
-        byte[] buf = new byte[BUFFER_SIZE];
-        final long chunksCount = size / BUFFER_SIZE;
-        InputStream is = Files.newInputStream(filePath);
-        try {
+            //Send file chunks
+            byte[] buf = new byte[BUFFER_SIZE];
+            final long chunksCount = size / BUFFER_SIZE;
             for (long i = 0; i < chunksCount; i++) {
                 byteBuf.clear();
+                byteBuf.retain();
                 is.read(buf);
                 byteBuf.writeBytes(buf);
-                byteBuf.retain();
-                connection.getCurrentChannel().writeAndFlush(byteBuf);
+                future = connection.getCurrentChannel().writeAndFlush(byteBuf);
+                syncFuture(future);
             }
             if (size % BUFFER_SIZE == 0) return;
-            buf = new byte[(int)size % BUFFER_SIZE];
+            buf = new byte[(int)(size % BUFFER_SIZE)];
             is.read(buf);
-            byteBuf.writeBytes(buf);
+            byteBuf.clear();
             byteBuf.retain();
+            byteBuf.writeBytes(buf);
             connection.getCurrentChannel().writeAndFlush(byteBuf);
-        } finally {
-            is.close();
         }
+
     }
 
     public void sendFileDownloadRequest(final @NotNull String fileName) {
@@ -163,6 +164,14 @@ public final class MessageSender {
 
         byteBuf.retain();
         connection.getCurrentChannel().writeAndFlush(byteBuf);
+    }
+
+    private void syncFuture(ChannelFuture future) {
+        try {
+            future.sync();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
 }

@@ -29,17 +29,17 @@
 
         <!-- Client -->
         <HBox>
-            <TextField fx:id="username" editable="false" text="Unauthorized" disable="false" HBox.hgrow="ALWAYS"/>
+            <TextField fx:id="username" editable="false" text="Unauthorized!" disable="false" HBox.hgrow="ALWAYS"/>
             <Button text="Login" prefWidth="150"/>
         </HBox>
         <!-- Buttons for tests -->
         <GridPane style="-fx-background-color: #ffffff" hgap="10" vgap="10">
             <padding><Insets top="10" right="20" bottom="10" left="20"/></padding>
-            <Button GridPane.columnIndex="0" text="Connect" prefWidth="100" onAction="#btnConnect"/>
-            <Button GridPane.columnIndex="1" text="Login" prefWidth="100" onAction="#btnLogin"/>
-            <Button GridPane.columnIndex="2" text="Upload File" prefWidth="100" onAction="#btnUploadFile"/>
-            <Button GridPane.columnIndex="3" text="Download File" prefWidth="100" onAction="#btnDownloadFile"/>
-            <Button GridPane.columnIndex="4" text="Something else" prefWidth="100" onAction="#btnSomethingElse"/>
+            <Button GridPane.columnIndex="0" fx:id="btnConnect" text="Connect" prefWidth="100" onAction="#btnConnect"/>
+            <Button GridPane.columnIndex="1" fx:id="btnLogin" text="Login" prefWidth="100" onAction="#btnLogin"/>
+            <Button GridPane.columnIndex="2" fx:id="btnUploadFile" text="Upload File" prefWidth="100" onAction="#btnUploadFile"/>
+            <Button GridPane.columnIndex="3" fx:id="btnDownloadFile" text="Download File" prefWidth="100" onAction="#btnDownloadFile"/>
+            <Button GridPane.columnIndex="4" fx:id="btnSomethingElse" text="Something else" prefWidth="100" onAction="#btnSomethingElse"/>
         </GridPane>
         <TextArea fx:id="textarea" editable="false" VBox.vgrow="ALWAYS" />
 

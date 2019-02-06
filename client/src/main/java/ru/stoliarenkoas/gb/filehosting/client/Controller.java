@@ -11,6 +11,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
@@ -29,9 +30,12 @@ public class Controller implements Initializable {
     private final MessageType[] messageTypes = MessageType.values();
     private Connection connection = Connection.getInstance();
 
+    private String currentUser = null;
+
     final Path clientFolder = Paths.get("client_folder");
-    final Path downloadsFolder = clientFolder.resolve("downloads");
-    final Path clientFile = Paths.get("Clients-file.txt"); //Stub
+    Path currentRemoteFolder = clientFolder.resolve("");
+    Path currentFolder = Paths.get("downloads");
+    final Path currentFile = Paths.get("Clients-file.txt"); //Stub
 
     final Set<String> dirs = new TreeSet<>();
     final Set<String> files = new TreeSet<>();
@@ -42,12 +46,17 @@ public class Controller implements Initializable {
         initializeWindowDragAndDropLabel();
     }
 
-    @FXML
-    Label labelDragWindow;
-    @FXML
-    VBox mainVBox;
-    @FXML
-    TextArea textarea;
+    @FXML Label labelDragWindow;
+    @FXML VBox mainVBox;
+    @FXML TextArea textarea;
+    @FXML TextField username;
+
+    //Buttons
+    @FXML Button btnConnect;
+    @FXML Button btnLogin;
+    @FXML Button btnUploadFile;
+    @FXML Button btnDownloadFile;
+    @FXML Button btnSomethingElse;
 
     @FXML
     private void login() {
@@ -111,10 +120,13 @@ public class Controller implements Initializable {
         //Close connection if it is opened
         if (connection.getCurrentChannel() != null) {
             connection.close();
-            ((Button)actionEvent.getSource()).setText("Connect");
+            btnConnect.setText("Connect");
+            username.setText("Unauthorized!");
             System.out.println("Disconnected!");
             return;
         }
+
+        connection.registerController(this);
         Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -123,49 +135,17 @@ public class Controller implements Initializable {
         });
         t.setDaemon(true);
         t.start();
-//        connection.getMessageSender().sendHandshake();
+        //Wait for it to start
+        try {
+            System.out.println("Waiting for connection to establish...");
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        connection.getMessageSender().sendHandshake();
         ((Button)actionEvent.getSource()).setText("Disconnect");
         System.out.println("Connected!");
-    }
-
-    /**
-     * Part of the stub, should not be here.
-     */
-    private void receiveFile() throws Exception {
-//        System.out.println("Receiving file...");
-//        InputStream is = socket.getInputStream();
-//
-//        //get file size
-//        long filesize = 0;
-//        for (int i = 7; i >= 0; i--) {
-//            int b = is.read();
-//            filesize += b << (8 * i);
-//
-//        }
-//        System.out.println("File size is " + filesize);
-//
-//        //create dirs, remove old files and open file-writing stream
-//        Files.createDirectories(downloadsFolder);
-//        Path targetFile = downloadsFolder.resolve(requestedFile);
-//        if (Files.exists(targetFile)) Files.delete(targetFile);
-//        OutputStream os = Files.newOutputStream(targetFile);
-//
-//        //divide file onto chunks
-//        long chunksCount = filesize / 256;
-//        byte[] buf = new byte[256];
-//        while (chunksCount-- > 0) {
-//            is.read(buf);
-//            System.out.println("Reading filechunk: " + Arrays.toString(buf));
-//            os.write(buf);
-//        }
-//        //send remainder
-//        for (int i = 0; i < filesize % 256; i++) {
-//            os.write(is.read());
-//        }
-//
-//        //free resources, set flags
-//        os.close();
-//        requestedFile = null;
     }
 
     private boolean checkConnection() {
@@ -177,124 +157,40 @@ public class Controller implements Initializable {
     }
 
     public void btnLogin(ActionEvent actionEvent) {
-        System.out.println("Button 'Login' is pressed");
+        System.out.println("Button 'Login/Logout' is pressed");
         if (!checkConnection()) return;
 
-        connection.getMessageSender().sendLoginRequest("merciful goddess", "mother of the Forlorn");
-//        //get login and password
-//        final byte[] loginStub = "merciful goddess".getBytes();
-//        final byte[] pwdStub = "mother of the Forlorn".getBytes();
-//        final byte[] msg = new byte[1 + 1 + loginStub.length + 1 + pwdStub.length];
-//
-//        //assemble message
-//        msg[0] = (byte) MessageType.LOGIN.ordinal();
-//        msg[1] = (byte) loginStub.length;
-//        msg[2 + msg[1]] = (byte) pwdStub.length;
-//        System.arraycopy(loginStub, 0, msg, 2, msg[1]);
-//        System.arraycopy(pwdStub, 0, msg, 3 + msg[1], msg[2 + msg[1]]);
-//        System.out.println(Arrays.toString(msg));
-//
-//        //send message
-//        try {
-//            socket.getOutputStream().write(msg);
-//            System.out.println("Login message sent!");
-//        } catch (IOException e) {
-//            System.out.println("Connection crashed and connection button is not updated!!!");
-//            socket = null;
-//        }
+        if ("Unauthorized!".equals(username.getText())) {
+            connection.getMessageSender().sendLoginRequest("merciful goddess", "mother of the Forlorn");
+            return;
+        }
+
+        connection.getMessageSender().sendLogoutRequest();
+
     }
 
     public void btnUploadFile(ActionEvent actionEvent) throws IOException{
+
         System.out.println("Button 'UploadFile' is pressed");
         if (!checkConnection()) return;
 
-        Path filepath = clientFolder.resolve(clientFile);
-        connection.getMessageSender().sendFileUploadRequest(filepath.toString());
-//        try {
-//            //assemble message
-//            final long filesize = Files.size(filepath);
-//            final byte[] filepathBytes = filepath.getFileName().toString().getBytes();
-//            final byte[] msg = new byte[1 + 8 + 1 + filepathBytes.length];
-//            msg[0] = (byte)MessageType.FILE_UPLOAD.ordinal();
-//            for (int i = 0; i < 8; i++) {
-//                msg[i + 1] = (byte) (filesize >>> (8 * (7 - i)));
-//            }
-//            msg[9] = (byte)filepathBytes.length;
-//            System.arraycopy(filepathBytes, 0, msg, 10, filepathBytes.length);
-//            System.out.println("File upload message assembled: " + Arrays.toString(msg));
-//
-//            //write message
-//            OutputStream os = socket.getOutputStream();
-//            os.write(msg);
-//            os.flush();
-//
-//            //count file-chunks
-//            long partsCount = filesize / 256;
-//            final byte[] reminder = new byte[(int)filesize%256];
-//
-//            //write file-chunks
-//            boolean exceptionSourceIn = true;
-//            try (InputStream is = Files.newInputStream(filepath)) {
-//                final byte[] buf = new byte[256];
-//                while (0 < partsCount--) {
-//                    is.read(buf);
-//                    exceptionSourceIn = false;
-//                    os.write(buf);
-//                    exceptionSourceIn = true;
-//                    System.out.println("Buffer part is written: " + Arrays.toString(buf));
-//                }
-//                is.read(reminder);
-//                exceptionSourceIn = false;
-//                os.write(reminder);
-//                System.out.println("Reminder is written: " + Arrays.toString(reminder));
-//            } catch (IOException e) {
-//                if (exceptionSourceIn) System.out.println("File read problem occurred!");
-//                else {
-//                    try {
-//                        socket.close();
-//                    } catch (IOException ex) {}
-//                    socket = null;
-//                    System.out.println("Connection closed!");
-//                }
-//            }
-//        } catch (IOException e) {
-//            System.out.println("Can't get size.");
-//        }
+        Path filepath = clientFolder.resolve(currentFile);
+        connection.getMessageSender().sendFileUploadRequest(filepath);
+
     }
 
 
     public void btnDownloadFile(ActionEvent actionEvent) {
+
         System.out.println("Button 'DownloadFile' is pressed");
 
         if (!checkConnection()) return;
-        connection.getMessageSender().sendFileDownloadRequest(clientFile.toString());
-//        //assemble message
-//        final byte[] filepathBytes = clientFile.toString().getBytes();
-//        final byte[] msg = new byte[1 + 1 + filepathBytes.length];
-//        if  (socket == null) return;
-//        msg[0] = (byte)MessageType.FILE_DOWNLOAD.ordinal();
-//        msg[1] = (byte)filepathBytes.length;
-//        System.arraycopy(filepathBytes, 0, msg, 2, filepathBytes.length);
-//
-//        //write message
-//        try {
-//            socket.getOutputStream().write(msg);
-//        } catch (IOException e) {
-//            try {
-//                socket.close();
-//            } catch (Exception ex) {
-//            } finally {
-//                socket = null;
-//                System.out.println("Connection closed!");
-//            }
-//        }
-//
-//        //set flags
-//        requestedFile = clientFile;
-//        System.out.println("Download request sent: " + Arrays.toString(msg));
+        connection.getMessageSender().sendFileDownloadRequest(currentFile.toString());
+
     }
 
     public void btnSomethingElse(ActionEvent actionEvent) throws Exception{
+
         System.out.println("Button 'SomethingElse' is pressed");
         textarea.clear();
         dirs.clear();
@@ -318,4 +214,9 @@ public class Controller implements Initializable {
         dirs.forEach(textarea::appendText);
         files.forEach(textarea::appendText);
     }
+
+    public Path resolveFilepath() {
+        return clientFolder.resolve(currentFolder).resolve(currentFile);
+    }
+
 }
