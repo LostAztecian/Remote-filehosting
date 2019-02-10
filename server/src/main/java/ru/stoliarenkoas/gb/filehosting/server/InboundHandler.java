@@ -39,39 +39,39 @@ public class InboundHandler extends ChannelInboundHandlerAdapter {
                 break;
             }
             case LOGIN: {
-                System.out.println("User login message received.");
                 stageFinished = handlers.get(ctx.channel()).login(ctx, byteBuf);
                 break;
             }
             case LOGOUT: {
-                System.out.println("User logout message received.");
                 stageFinished = handlers.get(ctx.channel()).logout(ctx, byteBuf);
                 break;
             }
             case REGISTER: {
+                stageFinished = handlers.get(ctx.channel()).register(ctx, byteBuf);
                 break;
             }
             case GET_FILE_LIST: {
+                stageFinished = handlers.get(ctx.channel()).sendFileList(ctx, byteBuf);
                 break;
             }
             case LOCATION_CHANGE: {
+                stageFinished = handlers.get(ctx.channel()).changeLocation(ctx, byteBuf);
                 break;
             }
             case FILE_UPLOAD: {
-                System.out.println("File upload message received.");
                 stageFinished = handlers.get(ctx.channel()).uploadFile(ctx, byteBuf);
                 break;
             }
             case FILE_DOWNLOAD: {
-                System.out.println("File download message received.");
-                System.out.println(ctx.name());
                 stageFinished = handlers.get(ctx.channel()).downloadFile(ctx, byteBuf);
                 break;
             }
             case FILE_DELETE: {
+                stageFinished = handlers.get(ctx.channel()).removeFile(ctx, byteBuf);
                 break;
             }
             case FILE_RENAME: {
+                stageFinished = handlers.get(ctx.channel()).renameFile(ctx, byteBuf);
                 break;
             }
         }
@@ -88,4 +88,5 @@ public class InboundHandler extends ChannelInboundHandlerAdapter {
         System.out.println("Exception caught: ");
         cause.printStackTrace();
     }
+
 }

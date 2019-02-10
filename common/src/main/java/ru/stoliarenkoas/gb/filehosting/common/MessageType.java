@@ -1,6 +1,7 @@
 package ru.stoliarenkoas.gb.filehosting.common;
 
 public enum MessageType {
+
     HANDSHAKE,
     HANDSHAKE_RESPONSE,
     LOGIN,

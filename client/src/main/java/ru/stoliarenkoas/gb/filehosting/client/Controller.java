@@ -16,6 +16,8 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import lombok.Getter;
+import lombok.Setter;
 import ru.stoliarenkoas.gb.filehosting.common.MessageType;
 
 import java.io.IOException;
@@ -31,6 +33,8 @@ public class Controller implements Initializable {
     private Connection connection = Connection.getInstance();
 
     private String currentUser = null;
+    @Setter @Getter
+    private Path requestedFile;
 
     final Path clientFolder = Paths.get("client_folder");
     Path currentRemoteFolder = clientFolder.resolve("");
@@ -40,7 +44,6 @@ public class Controller implements Initializable {
     final Set<String> dirs = new TreeSet<>();
     final Set<String> files = new TreeSet<>();
 
-    Path requestedFile;
 
     public void initialize(URL location, ResourceBundle resources) {
         initializeWindowDragAndDropLabel();
@@ -51,7 +54,7 @@ public class Controller implements Initializable {
     @FXML TextArea textarea;
     @FXML TextField username;
 
-    //Buttons
+    //Buttons stub
     @FXML Button btnConnect;
     @FXML Button btnLogin;
     @FXML Button btnUploadFile;
