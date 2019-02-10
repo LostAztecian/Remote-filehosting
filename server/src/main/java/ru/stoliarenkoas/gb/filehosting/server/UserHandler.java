@@ -10,6 +10,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -22,7 +23,8 @@ public class UserHandler {
     private InputStream is = null;
     private OutputStream os = null;
 
-    private final List<String> fileList = new LinkedList<>();
+    private final List<String> dirsList = new ArrayList<>();
+    private final List<String> fileList = new ArrayList<>();
 
     private Path currentFolder = Paths.get("");
     private Path currentFile = null;
@@ -106,13 +108,14 @@ public class UserHandler {
 
         msg.release();
         if (username == null) return true;
+        dirsList.clear();
         fileList.clear();
         try {
             Files.walkFileTree(SERVER_ROOT_FOLDER.resolve(username).resolve(currentFolder), new SimpleFileVisitor<Path>(){
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
                     if (dir.equals(currentFolder) || dir.equals(SERVER_ROOT_FOLDER.resolve(username))) return FileVisitResult.CONTINUE;
-                    fileList.add(0, dir.getFileName().toString());
+                    dirsList.add(dir.getFileName().toString());
                     return FileVisitResult.SKIP_SUBTREE;
                 }
 
@@ -128,17 +131,26 @@ public class UserHandler {
 
         buffer.clear();
         buffer.writeByte((byte)MessageType.GET_FILE_LIST_RESPONSE.ordinal());
-        buffer.writeByte((byte)fileList.size());
+        buffer.writeByte((byte)(dirsList.size() + fileList.size()));
+        buffer.writeByte((byte) dirsList.size());
+//        System.out.printf("Files: %d, including %d dirs.%n", (byte) dirsList.size() + fileList.size(), (byte) dirsList.size());
+        for (String name : dirsList) {
+            writeString(ctx, name);
+        }
         for (String name : fileList) {
-            final byte[] bytes = name.getBytes();
-            buffer.retain();
-            buffer.writeByte(bytes.length);
-            buffer.writeBytes(bytes);
-            ctx.writeAndFlush(buffer);
-            buffer.clear();
+            writeString(ctx, name);
         }
         return true;
 
+    }
+
+    private void writeString(final ChannelHandlerContext ctx, final String text) {
+        final byte[] bytes = text.getBytes();
+        buffer.retain();
+        buffer.writeByte(bytes.length);
+        buffer.writeBytes(bytes);
+        ctx.writeAndFlush(buffer);
+        buffer.clear();
     }
 
     public boolean changeLocation(ChannelHandlerContext ctx, ByteBuf msg) {

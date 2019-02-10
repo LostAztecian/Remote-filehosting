@@ -1,6 +1,8 @@
 package ru.stoliarenkoas.gb.filehosting.client;
 
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
@@ -8,10 +10,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
@@ -47,11 +46,16 @@ public class Controller implements Initializable {
 
     public void initialize(URL location, ResourceBundle resources) {
         initializeWindowDragAndDropLabel();
+        ObservableList<String> userFilesList = FXCollections.observableArrayList();
+        user_files.setItems(userFilesList);
+        ObservableList<String> remotrFilesList = FXCollections.observableArrayList();
+        remote_files.setItems(remotrFilesList);
     }
 
     @FXML Label labelDragWindow;
     @FXML VBox mainVBox;
-    @FXML TextArea textarea;
+    @FXML ListView<String> user_files;
+    @FXML ListView<String> remote_files;
     @FXML TextField username;
 
     //Buttons stub
@@ -164,7 +168,7 @@ public class Controller implements Initializable {
         if (!checkConnection()) return;
 
         if ("Unauthorized!".equals(username.getText())) {
-            connection.getMessageSender().sendLoginRequest("merciful goddess", "mother of the Forlorn");
+            connection.getMessageSender().sendLoginRequest("username", "password");
             return;
         }
 
@@ -195,7 +199,7 @@ public class Controller implements Initializable {
     public void btnSomethingElse(ActionEvent actionEvent) throws Exception{
 
         System.out.println("Button 'SomethingElse' is pressed");
-        textarea.clear();
+        user_files.getItems().clear();
         dirs.clear();
         files.clear();
 
@@ -203,19 +207,19 @@ public class Controller implements Initializable {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
                 if (dir.equals(clientFolder)) return FileVisitResult.CONTINUE;
-                dirs.add(String.format("%s\\%n", dir.getFileName()));
+                dirs.add(String.format("%s\\", dir.getFileName()));
                 return FileVisitResult.SKIP_SUBTREE;
             }
 
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                files.add(String.format("%s%n", file.getFileName()));
+                files.add(String.format("%s", file.getFileName()));
                 return FileVisitResult.CONTINUE;
             }
         });
 
-        dirs.forEach(textarea::appendText);
-        files.forEach(textarea::appendText);
+        dirs.forEach(user_files.getItems()::addAll);
+        files.forEach(user_files.getItems()::addAll);
     }
 
     public Path resolveFilepath() {

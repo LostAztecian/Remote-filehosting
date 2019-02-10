@@ -15,6 +15,7 @@ import java.nio.file.Paths;
 public class MessageReceiver {
     private final Connection connection;
     private long remainingSize = 0;
+    private byte dirsCount = 0;
 
     OutputStream os = null;
 
@@ -65,16 +66,19 @@ public class MessageReceiver {
 
         if (remainingSize == 0) {
             remainingSize = msg.readByte();
-            Platform.runLater(() -> connection.getController().textarea.clear());
+            dirsCount = msg.readByte();
+            System.out.printf("Files: %d including %d dirs.%n", remainingSize, dirsCount);
+            Platform.runLater(() -> connection.getController().remote_files.getItems().clear());
         }
         while (remainingSize > 0 && msg.readableBytes() > 0) {
             final byte[] msgBytes = new byte[msg.readByte()];
             msg.readBytes(msgBytes);
-            final String filename = new String(msgBytes) + "\n";
-            Platform.runLater(() -> {
-                connection.getController().textarea.appendText(filename);
-            });
+            final String filename = dirsCount == 0 ? new String(msgBytes) : new String(msgBytes) + "\\";
+            if (dirsCount > 0) dirsCount--;
             remainingSize--;
+            Platform.runLater(() -> {
+                connection.getController().remote_files.getItems().add(filename);
+            });
         }
 
         return remainingSize == 0;
