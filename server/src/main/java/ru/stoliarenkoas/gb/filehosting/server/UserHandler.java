@@ -11,7 +11,6 @@ import java.io.OutputStream;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 public class UserHandler {
@@ -114,7 +113,7 @@ public class UserHandler {
             Files.walkFileTree(SERVER_ROOT_FOLDER.resolve(username).resolve(currentFolder), new SimpleFileVisitor<Path>(){
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                    if (dir.equals(currentFolder) || dir.equals(SERVER_ROOT_FOLDER.resolve(username))) return FileVisitResult.CONTINUE;
+                    if (dir.equals(SERVER_ROOT_FOLDER.resolve(username).resolve(currentFolder)) || dir.equals(SERVER_ROOT_FOLDER.resolve(username))) return FileVisitResult.CONTINUE;
                     dirsList.add(dir.getFileName().toString());
                     return FileVisitResult.SKIP_SUBTREE;
                 }
@@ -161,8 +160,10 @@ public class UserHandler {
 
         //resolve target folder
         Path targetFolder;
-        if ("..".equals(folder)) {
-            targetFolder = currentFolder.getParent();
+        if ("..\\".equals(folder)) {
+            if (currentFolder.getNameCount() <= 1) targetFolder = Paths.get("");
+            else targetFolder = currentFolder.getParent();
+            System.out.println("Current folder name: " + targetFolder.toString());
         } else targetFolder = currentFolder.resolve(folder);
 
         //prepare response
@@ -171,7 +172,8 @@ public class UserHandler {
         buffer.writeByte((byte)MessageType.LOCATION_CHANGE_RESPONSE.ordinal());
 
         //if unable to change location
-        if (targetFolder == null || Files.notExists(targetFolder) || !Files.isDirectory(targetFolder)) {
+        if (targetFolder == null || Files.notExists(SERVER_ROOT_FOLDER.resolve(username).resolve(targetFolder)) || !Files.isDirectory(SERVER_ROOT_FOLDER.resolve(username).resolve(targetFolder))) {
+            System.out.println(targetFolder);
             buffer.writeBoolean(false);
             ctx.writeAndFlush(buffer);
             msg.release();
@@ -248,6 +250,7 @@ public class UserHandler {
         //Ensure file existence.
         currentFile = SERVER_ROOT_FOLDER.resolve(Paths.get(username)).resolve(currentFolder).resolve(Paths.get(new String(filenameBytes)));
         if (Files.notExists(currentFile)) {
+            System.out.println("No such file");
             return true;
         }
 

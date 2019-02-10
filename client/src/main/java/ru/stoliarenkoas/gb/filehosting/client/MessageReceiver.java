@@ -3,6 +3,9 @@ package ru.stoliarenkoas.gb.filehosting.client;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import javafx.application.Platform;
+import javafx.event.EventHandler;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.text.Text;
 import lombok.RequiredArgsConstructor;
 
 import java.io.IOException;
@@ -68,7 +71,10 @@ public class MessageReceiver {
             remainingSize = msg.readByte();
             dirsCount = msg.readByte();
             System.out.printf("Files: %d including %d dirs.%n", remainingSize, dirsCount);
-            Platform.runLater(() -> connection.getController().remote_files.getItems().clear());
+            Platform.runLater(() -> {
+                connection.getController().remote_files.getItems().clear();
+                connection.getController().remote_files.getItems().add("..\\");
+            });
         }
         while (remainingSize > 0 && msg.readableBytes() > 0) {
             final byte[] msgBytes = new byte[msg.readByte()];
@@ -78,6 +84,18 @@ public class MessageReceiver {
             remainingSize--;
             Platform.runLater(() -> {
                 connection.getController().remote_files.getItems().add(filename);
+                connection.getController().remote_files.setOnMouseClicked(new EventHandler<MouseEvent>() {
+                    @Override
+                    public void handle(MouseEvent event) {
+                        final String text = ((Text)event.getTarget()).getText();
+                        System.out.println(text);
+                        if (text.endsWith("\\")) connection.getMessageSender().sendLocationChangeRequest(text);
+                        else {
+                            connection.getMessageSender().sendFileDownloadRequest(text);
+                            connection.getController().currentFile = Paths.get(text);
+                        }
+                    }
+                });
             });
         }
 
@@ -114,7 +132,7 @@ public class MessageReceiver {
         if (os == null) {
             System.out.println("Receiving file...");
             remainingSize = msg.readLong();
-            //set file name here: connection.getController().currentFile = (Path)
+//            connection.getController().currentFile = (Path) //set current file here
             final Path targetFile = connection.getController().resolveFilepath();
             if (Files.exists(targetFile)) Files.delete(targetFile);
             os = Files.newOutputStream(targetFile);

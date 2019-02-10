@@ -13,6 +13,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import lombok.Getter;
@@ -37,8 +38,8 @@ public class Controller implements Initializable {
 
     final Path clientFolder = Paths.get("client_folder");
     Path currentRemoteFolder = clientFolder.resolve("");
-    Path currentFolder = Paths.get("downloads");
-    final Path currentFile = Paths.get("Clients-file.txt"); //Stub
+    Path currentFolder = Paths.get("");
+    Path currentFile = Paths.get("Clients-file.txt"); //Stub
 
     final Set<String> dirs = new TreeSet<>();
     final Set<String> files = new TreeSet<>();
@@ -203,10 +204,10 @@ public class Controller implements Initializable {
         dirs.clear();
         files.clear();
 
-        Files.walkFileTree(clientFolder, new SimpleFileVisitor<Path>() {
+        Files.walkFileTree(clientFolder.resolve(currentFolder), new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                if (dir.equals(clientFolder)) return FileVisitResult.CONTINUE;
+                if (dir.equals(clientFolder.resolve(currentFolder))) return FileVisitResult.CONTINUE;
                 dirs.add(String.format("%s\\", dir.getFileName()));
                 return FileVisitResult.SKIP_SUBTREE;
             }
@@ -218,8 +219,25 @@ public class Controller implements Initializable {
             }
         });
 
+        user_files.getItems().add("..\\");
         dirs.forEach(user_files.getItems()::addAll);
         files.forEach(user_files.getItems()::addAll);
+        user_files.setOnMouseClicked(new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent event) {
+                final String text = ((Text)event.getTarget()).getText();
+                System.out.println(text);
+                try {
+                    if (text.endsWith("\\")) {
+                        currentFolder = currentFolder.resolve(text);
+                        btnSomethingElse(actionEvent);
+                    }
+                    else connection.getMessageSender().sendFileUploadRequest(clientFolder.resolve(currentFolder).resolve(text));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
     }
 
     public Path resolveFilepath() {
